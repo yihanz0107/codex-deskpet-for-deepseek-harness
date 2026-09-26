@@ -76,6 +76,12 @@ This command starts both DeepSeek Harness and the desktop pet. If Harness is alr
 
 If an API Key has not been set yet, the first launch asks for one.
 
+To stop only the desktop pet without stopping DeepSeek Harness:
+
+```bash
+deepsshpet stop
+```
+
 Open **DeepSeek Harness → Settings → Desktop Pet** to select pets, change size, edit quick phrases, show or hide the pet, and open the full-screen catalog.
 
 ## License

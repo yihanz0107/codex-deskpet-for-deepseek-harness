@@ -25,6 +25,27 @@ function Find-Harness {
   return $null
 }
 
+if ($args.Count -gt 0) {
+  switch ($args[0]) {
+    'stop' {
+      if ($args.Count -ne 1) { throw 'Usage: deepsshpet stop' }
+      if (-not (Test-Url "$petUrl/state")) {
+        Write-Host 'DeskPet is not running.'
+        exit 0
+      }
+      # The app may close its HTTP server before PowerShell receives the response.
+      try { Invoke-WebRequest -Uri "$petUrl/quit" -Method Post -ContentType 'application/json' -Body '{}' -TimeoutSec 2 -UseBasicParsing | Out-Null } catch {}
+      Write-Host 'DeskPet stopped.'
+      exit 0
+    }
+    { $_ -in '-h', '--help' } {
+      Write-Host "Usage:`n  deepsshpet       Start DeskPet and DeepSeek Harness`n  deepsshpet stop  Stop DeskPet only"
+      exit 0
+    }
+    default { throw "Unknown command: $($args[0]). Usage: deepsshpet [stop]" }
+  }
+}
+
 if (-not (Test-Url "$petUrl/state")) {
   $electron = Join-Path $petApp 'node_modules\.bin\electron.cmd'
   if (Test-Path $electron) { Start-Process -FilePath $electron -ArgumentList @($petApp) -WindowStyle Hidden }

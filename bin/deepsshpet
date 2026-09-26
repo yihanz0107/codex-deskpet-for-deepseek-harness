@@ -143,6 +143,36 @@ open_url() {
   fi
 }
 
+stop_pet() {
+  if ! curl --fail --silent --max-time 1 "$pet_url/state" >/dev/null 2>&1; then
+    printf 'DeskPet is not running.\n'
+    return
+  fi
+  # The app may close its HTTP server before curl receives the response.
+  curl --silent --max-time 2 --request POST "$pet_url/quit" >/dev/null 2>&1 || true
+  printf 'DeskPet stopped.\n'
+}
+
+case "${1:-}" in
+  stop)
+    if [ "$#" -ne 1 ]; then
+      printf 'Usage: deepsshpet stop\n' >&2
+      exit 2
+    fi
+    stop_pet
+    exit 0
+    ;;
+  -h|--help)
+    printf 'Usage:\n  deepsshpet       Start DeskPet and DeepSeek Harness\n  deepsshpet stop  Stop DeskPet only\n'
+    exit 0
+    ;;
+  '') ;;
+  *)
+    printf 'Unknown command: %s\nUsage: deepsshpet [stop]\n' "$1" >&2
+    exit 2
+    ;;
+esac
+
 if ! curl --fail --silent --max-time 1 "$pet_url/state" >/dev/null 2>&1; then
   start_pet
 fi

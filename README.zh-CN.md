@@ -76,6 +76,12 @@ deepsshpet
 
 首次启动如果还没有 API Key，会先提示输入。
 
+只关闭桌宠（不会停止 DeepSeek Harness）：
+
+```bash
+deepsshpet stop
+```
+
 ## 使用
 
 打开 DeepSeek Harness → 设置 → 桌面宠物：
