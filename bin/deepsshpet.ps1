@@ -25,21 +25,42 @@ function Find-Harness {
   return $null
 }
 
+function Stop-Harness {
+  if (-not (Test-Url $serviceUrl)) {
+    Write-Host 'DeepSeek Harness is not running.'
+    return
+  }
+
+  $uri = [Uri]$serviceUrl
+  if ($uri.Host -notin '127.0.0.1', 'localhost', '::1') {
+    throw "Refusing to stop a non-local Harness URL: $serviceUrl"
+  }
+  $connections = @(Get-NetTCPConnection -State Listen -LocalPort $uri.Port -ErrorAction SilentlyContinue)
+  $processIds = @($connections | Select-Object -ExpandProperty OwningProcess -Unique)
+  if ($processIds.Count -eq 0) { throw "Could not find the local DeepSeek Harness process on port $($uri.Port)." }
+  $processIds | ForEach-Object { Stop-Process -Id $_ -Force }
+  Write-Host 'DeepSeek Harness stopped.'
+}
+
+function Stop-Pet {
+  if (-not (Test-Url "$petUrl/state")) {
+    Write-Host 'DeskPet is not running.'
+    return
+  }
+  # The app may close its HTTP server before PowerShell receives the response.
+  try { Invoke-WebRequest -Uri "$petUrl/quit" -Method Post -ContentType 'application/json' -Body '{}' -TimeoutSec 2 -UseBasicParsing | Out-Null } catch {}
+  Write-Host 'DeskPet stopped.'
+}
+
 if ($args.Count -gt 0) {
   switch ($args[0]) {
     'stop' {
       if ($args.Count -ne 1) { throw 'Usage: deepsshpet stop' }
-      if (-not (Test-Url "$petUrl/state")) {
-        Write-Host 'DeskPet is not running.'
-        exit 0
-      }
-      # The app may close its HTTP server before PowerShell receives the response.
-      try { Invoke-WebRequest -Uri "$petUrl/quit" -Method Post -ContentType 'application/json' -Body '{}' -TimeoutSec 2 -UseBasicParsing | Out-Null } catch {}
-      Write-Host 'DeskPet stopped.'
+      try { Stop-Harness } finally { Stop-Pet }
       exit 0
     }
     { $_ -in '-h', '--help' } {
-      Write-Host "Usage:`n  deepsshpet       Start DeskPet and DeepSeek Harness`n  deepsshpet stop  Stop DeskPet only"
+      Write-Host "Usage:`n  deepsshpet       Start DeskPet and DeepSeek Harness`n  deepsshpet stop  Stop DeepSeek Harness and DeskPet"
       exit 0
     }
     default { throw "Unknown command: $($args[0]). Usage: deepsshpet [stop]" }

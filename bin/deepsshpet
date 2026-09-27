@@ -153,17 +153,57 @@ stop_pet() {
   printf 'DeskPet stopped.\n'
 }
 
+stop_harness() {
+  if ! curl --silent --output /dev/null --max-time 1 "$service_url" >/dev/null 2>&1; then
+    printf 'DeepSeek Harness is not running.\n'
+    return
+  fi
+
+  service_host=$(printf '%s\n' "$service_url" | sed -n 's#^[A-Za-z][A-Za-z0-9+.-]*://\([^/:]*\).*#\1#p')
+  service_port=$(printf '%s\n' "$service_url" | sed -n 's#^[A-Za-z][A-Za-z0-9+.-]*://[^/:]*:\([0-9][0-9]*\).*#\1#p')
+  if [ -z "$service_port" ]; then
+    case "$service_url" in https://*) service_port=443 ;; *) service_port=80 ;; esac
+  fi
+  case "$service_host" in
+    127.0.0.1|localhost|::1) ;;
+    *)
+      printf 'Refusing to stop a non-local Harness URL: %s\n' "$service_url" >&2
+      return 1
+      ;;
+  esac
+
+  if command -v lsof >/dev/null 2>&1; then
+    harness_pids=$(lsof -nP -tiTCP:"$service_port" -sTCP:LISTEN 2>/dev/null || true)
+    if [ -n "$harness_pids" ]; then
+      # Word splitting is intentional: lsof prints one PID per line.
+      kill $harness_pids
+      printf 'DeepSeek Harness stopped.\n'
+      return
+    fi
+  elif command -v fuser >/dev/null 2>&1; then
+    if fuser -k "$service_port/tcp" >/dev/null 2>&1; then
+      printf 'DeepSeek Harness stopped.\n'
+      return
+    fi
+  fi
+
+  printf 'Could not find the local DeepSeek Harness process on port %s.\n' "$service_port" >&2
+  return 1
+}
+
 case "${1:-}" in
   stop)
     if [ "$#" -ne 1 ]; then
       printf 'Usage: deepsshpet stop\n' >&2
       exit 2
     fi
+    stop_harness_status=0
+    stop_harness || stop_harness_status=$?
     stop_pet
-    exit 0
+    exit "$stop_harness_status"
     ;;
   -h|--help)
-    printf 'Usage:\n  deepsshpet       Start DeskPet and DeepSeek Harness\n  deepsshpet stop  Stop DeskPet only\n'
+    printf 'Usage:\n  deepsshpet       Start DeskPet and DeepSeek Harness\n  deepsshpet stop  Stop DeepSeek Harness and DeskPet\n'
     exit 0
     ;;
   '') ;;

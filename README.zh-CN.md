@@ -76,7 +76,7 @@ deepsshpet
 
 首次启动如果还没有 API Key，会先提示输入。
 
-只关闭桌宠（不会停止 DeepSeek Harness）：
+同时关闭 DeepSeek Harness 和桌宠：
 
 ```bash
 deepsshpet stop
